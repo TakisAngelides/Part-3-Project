@@ -7,7 +7,6 @@ import numpy as np
 from random import uniform, seed, randint
 from sympy import LeviCivita as eps
 
-
 # fig = plt.figure()
 # ax = fig.add_subplot(111, projection='3d')
 
@@ -76,40 +75,9 @@ def plot_parity_state(ax, p, q, a, b, c, d):
     plt.legend()
     plt.show()
 
-# p = np.array([0,0,1])
-# q = np.array([0,0,-1])
-# a = np.array([1,1,1])
-# b = np.array([1,1,-1])
-# c = np.array([-1,1,1]
-# d = np.array([1,-1,1])
-
-# all = np.array([p,q,a,b,c,d])
-# parity_all = -all
-
-# t = pi/2
-# R_x = np.array([[1,0,0],[0,cos(t),-sin(t)],[0,sin(t),cos(t)]])
-# R_z = np.array([[cos(t),-sin(t),0],[sin(t),cos(t),0],[0,0,1]])
-# print(lambda M,v : M.dot(v), R_z, parity_all)
-
-# t = pi/2
-# R_x = np.array([[1,0,0],[0,cos(t),-sin(t)],[0,sin(t),cos(t)]])
-# R_y = np.array([[cos(t),0,sin(t)],[0,1,0],[-sin(t),0,cos(t)]])
-# R_z = np.array([[cos(t),-sin(t),0],[sin(t),cos(t),0],[0,0,1]])
-# v = np.array([1,2,3])
-# print(R_z.dot(v))
-
-# plot_state(ax,p,q,a,b,c,d)
-# plot_parity_state(ax,p,q,a,b,c,d)
-# plt.show()
-
 # -------------------------------------------
 
 # For a collision event:
-
-# If all final momenta have 0 y-component or all 0 x-component then label the event non-chiral since a rotation by 180
-# in xz plane maps everything back to original. (But that is very unlikely so can avoid putting the if statement)
-
-e1, e2, e3 = blades['e1'], blades['e2'], blades['e3']
 
 def parity(S):
     return [-v for v in S]
@@ -123,50 +91,6 @@ def multivec_to_vec(a):
 def energy(m,p):
     p = multivec_to_vec(p)
     return np.sqrt(m**2 + np.linalg.norm(p)**2)
-
-# TODO: Incorporate permutations in the algorithm
-
-# For distinct masses between all particles - since permutations are not checked
-
-R1 = e1*e3  # Rotates -p and -q back to themselves
-
-chiral_states = []
-non_chiral_states = []
-
-# for _ in range(3):
-#
-#     mp,mq,ma,mb,mc,md = randint(0,10), randint(0,10), randint(0,10), randint(0,10), randint(0,10), randint(0,10)
-#     p = uniform(-10, 10)*e3
-#     q = -p
-#     a = uniform(-10, 10)*e1 + uniform(-10, 10)*e2 + uniform(-10, 10)*e3
-#     b = uniform(-10, 10)*e1 + uniform(-10, 10)*e2 + uniform(-10, 10)*e3
-#     c = uniform(-10, 10)*e1 + uniform(-10, 10)*e2 + uniform(-10, 10)*e3
-#     d = uniform(-10, 10)*e1 + uniform(-10, 10)*e2 + uniform(-10, 10)*e3
-#     Ep,Eq,Ea,Eb,Ec,Ed = energy(mp,p), energy(mq,q), energy(ma,a), energy(mb,b), energy(mc,c), energy(md,d)
-#     E = [Ep,Eq,Ea,Eb,Ec,Ed]
-#
-#     S = [p, q, a, b, c, d]
-#
-#     alpha = arctan(abs(S[2][2])/abs(S[2][1]))  # Angle the vector 'a' makes in the e1-e2 plane
-#
-#     R2 = e**(alpha*(e1*e2))  # Rotates R1(-a)R1' back to 'a'
-#
-#     if S[2][2]*S[2][1] > 0:
-#         R2 = e**(alpha*(e2*e1))  # Rotate in the opposite direction if 'a' lives in the 1st or 3rd quadrant
-#
-#     S1 = parity(S)
-#     S2 = rotate(S1, R1)
-#     S3 = rotate(S2, R2)
-#     final = S3
-#
-#     if S == final:
-#         non_chiral_states.append([S,E])
-#         print(S)
-#         print(final)
-#     else:
-#         chiral_states.append([S,E])
-
-# TODO: Make epsilon function more efficient
 
 def epsilon(a, b, c, d):
 
@@ -345,17 +269,130 @@ def logic_statement_true_for_non_chiral(S, E):
             or case_31 or case_32 or case_34 or case_35 or case_37 or case_40 or case_41 or case_42 or case_43
             or case_44 or case_45 or case_46 or case_47 or case_48)
 
-mp,mq,ma,mb,mc,md = 1, 2, 3, 4, 5, 6
-p = uniform(-10, 10)*e3
-q = -p
-a = uniform(-10, 10)*e1 + uniform(-10, 10)*e2 + uniform(-10, 10)*e3
-b = uniform(-10, 10)*e1 + uniform(-10, 10)*e2 + uniform(-10, 10)*e3
-c = uniform(-10, 10)*e1 + uniform(-10, 10)*e2 + uniform(-10, 10)*e3
-d = uniform(-10, 10)*e1 + uniform(-10, 10)*e2 + uniform(-10, 10)*e3
-Ep,Eq,Ea,Eb,Ec,Ed = energy(mp,p), energy(mq,q), energy(ma,a), energy(mb,b), energy(mc,c), energy(md,d)
-E = [Ep,Eq,Ea,Eb,Ec,Ed]
-S = [p, q, a, b, c, d]
+def construct_state():
 
-print(logic_statement_true_for_non_chiral(S,E))
+    mp, mq, ma, mb, mc, md = randint(0, 10), randint(0, 10), randint(0, 10), randint(0, 10), randint(0, 10), randint(0,10)
+
+    p = uniform(-10, 10) * e3
+    q = -p
+
+    a = uniform(-10, 10) * e1 + uniform(-10, 10) * e2 + uniform(-10, 10) * e3
+    b = uniform(-10, 10) * e1 + uniform(-10, 10) * e2 + uniform(-10, 10) * e3
+    c = uniform(-10, 10) * e1 + uniform(-10, 10) * e2 + uniform(-10, 10) * e3
+    d = uniform(-10, 10) * e1 + uniform(-10, 10) * e2 + uniform(-10, 10) * e3
+
+    Ep, Eq, Ea, Eb, Ec, Ed = energy(mp, p), energy(mq, q), energy(ma, a), energy(mb, b), energy(mc, c), energy(md, d)
+
+    E = [Ep, Eq, Ea, Eb, Ec, Ed]
+    S = [p, q, a, b, c, d]
+
+    return S,E
+
+def construct_non_chiral_state():
+
+    mp, mq, ma, mb, mc, md = 1, 1, 1, 1, 1, 1
+
+    p = uniform(-10, 10) * e3
+    q = -p
+
+    a = uniform(-10, 10) * e1 + uniform(-10, 10) * e2 + uniform(-10, 10) * e3
+    b = a[1] * e1 - a[2] * e2 + a[3] * e3
+    R = e**(uniform(0,2*pi)*e1*e2)
+    c = R*a*~R
+    d = c[1] * e1 - c[2] * e2 + c[3] * e3
+
+    Ep, Eq, Ea, Eb, Ec, Ed = energy(mp, p), energy(mq, q), energy(ma, a), energy(mb, b), energy(mc, c), energy(md, d)
+
+    E = [Ep, Eq, Ea, Eb, Ec, Ed]
+    S = [p, q, a, b, c, d]
+
+    return S, E
+
+def chirality_test_distinct_masses():
+
+    S, E = construct_state()
+
+    # Construct the R2 rotor for particle a by projecting into the e1e2 plane
+    a = S[2]
+    a_proj = a - a[3] * e3
+    a_rot = R1 * (-a) * ~R1
+    a_rot_proj = a_rot - a_rot[3] * e3
+    v = a_proj + a_rot_proj
+    n = v.normal()
+    R2 = a_proj.normal() * n
+
+    # Map p, q and a back to themselves
+    S1 = parity(S)
+    S2 = rotate(S1, R1)
+    S3 = rotate(S2, R2)
+    final = S3
+
+    return S, E, final
+
+def swap(S,idx_1,idx_2):
+
+    tmp = S[idx_1]
+    S[idx_1] = S[idx_2]
+    S[idx_2] = tmp
+
+    return S
+
+def chirality_test_same_masses():
+
+    S, E = construct_non_chiral_state()
+
+    # Map p, q and a back to themselves
+    S1 = parity(S)
+    S2 = rotate(S1, R1)
+    S3 = swap(S2,2,3)  # input 2 corresponds to S[2] = a and 3 to b since S = p q a b c d
+    S4 = swap(S3,4,5)  # input 4 corresponds to a and 5 to b since S = p q a b c d
+    final = S4
+
+    return S, E, final
+
+e1, e2, e3 = blades['e1'], blades['e2'], blades['e3']
+
+R1 = e1*e3  # Rotates -p and -q back to themselves
+
+chiral_states = []
+non_chiral_states = []
+
+for _ in range(5):
+
+    S, E, final = chirality_test_distinct_masses()
+
+    if S == final:
+        non_chiral_states.append([S, E])
+    else:
+        chiral_states.append([S, E])
+
+    S, E, final = chirality_test_same_masses()
+
+    if S == final:
+        non_chiral_states.append([S, E])
+    else:
+        chiral_states.append([S, E])
+
+# The first is slot is incremented for every true and the second for every false
+non_chiral_evaluation_on_logic_statement = [0, 0]
+chiral_evaluation_on_logic_statement = [0, 0]
+
+for non_chiral_state in non_chiral_states:
+    flag = logic_statement_true_for_non_chiral(non_chiral_state[0], non_chiral_state[1])
+    if flag:
+        non_chiral_evaluation_on_logic_statement[0] += 1
+    else:
+        non_chiral_evaluation_on_logic_statement[1] += 1
+
+for chiral_state in chiral_states:
+    flag = logic_statement_true_for_non_chiral(chiral_state[0], chiral_state[1])
+    if flag:
+        chiral_evaluation_on_logic_statement[0] += 1
+    else:
+        chiral_evaluation_on_logic_statement[1] += 1
+
+
+
+
 
 # -------------------------------------------
