@@ -312,20 +312,14 @@ def chirality_test_distinct_masses():
 
     S, E = construct_state()
 
-    # Construct the R2 rotor for particle a by projecting into the e1e2 plane
     a = S[2]
     a_proj = a - a[3] * e3
-    a_rot = R1 * (-a) * ~R1
-    a_rot_proj = a_rot - a_rot[3] * e3
-    v = a_proj + a_rot_proj
-    n = v.normal()
-    R2 = a_proj.normal() * n
+    R1 = a_proj.normal()*e3
 
     # Map p, q and a back to themselves
     S1 = parity(S)
     S2 = rotate(S1, R1)
-    S3 = rotate(S2, R2)
-    final = S3
+    final = S2
 
     return S, E, final
 
@@ -341,6 +335,8 @@ def chirality_test_same_masses():
 
     S, E = construct_non_chiral_state()
 
+    R1 = e1*e3
+
     # Map p, q and a back to themselves
     S1 = parity(S)
     S2 = rotate(S1, R1)
@@ -352,12 +348,10 @@ def chirality_test_same_masses():
 
 e1, e2, e3 = blades['e1'], blades['e2'], blades['e3']
 
-R1 = e1*e3  # Rotates -p and -q back to themselves
-
 chiral_states = []
 non_chiral_states = []
 
-for _ in range(5):
+for _ in range(50):
 
     S, E, final = chirality_test_distinct_masses()
 
@@ -391,8 +385,20 @@ for chiral_state in chiral_states:
     else:
         chiral_evaluation_on_logic_statement[1] += 1
 
+x = ['True', 'False']
+height_non_chiral = [non_chiral_evaluation_on_logic_statement[0], non_chiral_evaluation_on_logic_statement[1]]
+height_chiral = [chiral_evaluation_on_logic_statement[0], chiral_evaluation_on_logic_statement[1]]
 
-
-
+plt.bar(x, height_non_chiral, color = 'k', width = 0.1)
+plt.title('Non-chiral states evaluated on the logic statement\nwhich is true iff the input is non-chiral')
+plt.ylabel('Frequency')
+plt.show()
+# plt.savefig('non_chiral_collision_logic_statement_test.pdf', bbox_inches='tight')
+#
+plt.bar(x, height_chiral, color = 'k', width = 0.1)
+plt.title('Chiral states evaluated on the logic statement\nwhich is true iff the input is non-chiral')
+plt.ylabel('Frequency')
+plt.show()
+# plt.savefig('chiral_collision_logic_statement_test.pdf', bbox_inches='tight')
 
 # -------------------------------------------
