@@ -10,6 +10,8 @@ from sympy import LeviCivita as eps
 # fig = plt.figure()
 # ax = fig.add_subplot(111, projection='3d')
 
+e1, e2, e3 = blades['e1'], blades['e2'], blades['e3']
+
 def plot_state(ax, p, q, a, b, c, d):
 
     X = (0)
@@ -123,6 +125,14 @@ def sym_2_Gram_det(a,b):
 def sym_3_Gram_det(a,b,c):
     M = [[dot(a,a),dot(a,b),dot(a,c)],[dot(b,a),dot(b,b),dot(b,c)],[dot(c,a),dot(c,b),dot(c,c)]]
     return np.linalg.det(M)
+
+def swap(S,idx_1,idx_2):
+
+    tmp = S[idx_1]
+    S[idx_1] = S[idx_2]
+    S[idx_2] = tmp
+
+    return S
 
 def logic_statement_true_for_non_chiral(S, E):
 
@@ -283,12 +293,13 @@ def construct_state():
 
     Ep, Eq, Ea, Eb, Ec, Ed = energy(mp, p), energy(mq, q), energy(ma, a), energy(mb, b), energy(mc, c), energy(md, d)
 
+    M = [mp, mq, ma, mb, mc, md]
     E = [Ep, Eq, Ea, Eb, Ec, Ed]
     S = [p, q, a, b, c, d]
 
-    return S,E
+    return S, E, M
 
-def construct_non_chiral_state():
+def construct_non_chiral_state(): # Trick
 
     mp, mq, ma, mb, mc, md = 1, 1, 1, 1, 1, 1
 
@@ -303,71 +314,173 @@ def construct_non_chiral_state():
 
     Ep, Eq, Ea, Eb, Ec, Ed = energy(mp, p), energy(mq, q), energy(ma, a), energy(mb, b), energy(mc, c), energy(md, d)
 
+    M = [mp, mq, ma, mb, mc, md]
     E = [Ep, Eq, Ea, Eb, Ec, Ed]
     S = [p, q, a, b, c, d]
 
-    return S, E
+    return S, E, M
 
-def chirality_test_distinct_masses():
+def chirality_test():
 
-    S, E = construct_state()
+    chiral_states = []
+    non_chiral_states = []
 
-    a = S[2]
-    a_proj = a - a[3] * e3
-    R1 = a_proj.normal()*e3
+    S, E, M = construct_state()
 
-    # Map p, q and a back to themselves
-    S1 = parity(S)
-    S2 = rotate(S1, R1)
-    final = S2
+    S_parity = parity(S)  # Perform parity on the set of momenta
 
-    return S, E, final
+    same_mass_with_a = [idx for idx in range(len(M)) if M[idx] == M[2] and idx != 2]
+    same_energy_with_a = [idx for idx in range(len(E)) if E[idx] == E[2] and idx != 2]
+    # Holds the indices of particles that can be permuted with a
+    permute_with_a = list(set(same_mass_with_a) and set(same_energy_with_a))
 
-def swap(S,idx_1,idx_2):
+    same_mass_with_b = [idx for idx in range(len(M)) if M[idx] == M[3] and idx != 3]
+    same_energy_with_b = [idx for idx in range(len(E)) if E[idx] == E[3] and idx != 3]
+    # Holds the indices of particles that can be permuted with b
+    permute_with_b = list(set(same_mass_with_b) and set(same_energy_with_b))
 
-    tmp = S[idx_1]
-    S[idx_1] = S[idx_2]
-    S[idx_2] = tmp
+    # The indices of b,c,d in S are 3,4,5 which sum to 12. If I can permute a with eg b then I need to check if I can
+    # silmutaneously permute c,d with indices [4,5] so the dictionary for 12-3 points to [4,5] where 3 is b
+    swap_dictionary = {9: [4, 5], 8: [3, 5], 7: [3, 4]}
 
-    return S
+    a = S[2] # initial 3-momentum of a
+    mp, mq, mc, md = M[0], M[1], M[4], M[5]
+    Ec, Ed = E[4], E[5]
 
-def chirality_test_same_masses():
+    if not permute_with_a:
+        # For no permutations at all and for pq permutations
+        # ie pq permutations don't change anything if there are no final state permutations
+        a_12 = a - a[3] * e3
+        R = a_12.normal() * e3
+        S_final = rotate(S_parity, R)
+        if S == S_final:
+            non_chiral_states.append([S, E])
+        elif permute_with_b and 2 not in permute_with_b:  # Check if non-chiral for (bc) or (bd)
+            for idx in permute_with_b:
+                if S == swap(S_final, 3, idx):
+                    non_chiral_states.append([S, E])
+        elif mc == md and Ec == Ed:  # Final check available (cd)
+            if S == swap(S_final, 4, 5):
+                non_chiral_states.append([S, E])
+        else:
+            chiral_states.append([S, E])
+    else:
+        flag = False  # Flag is set to true when one of the permutations managed to map everything back
+        for idx in permute_with_a:
+            # For ax permutations but no pq permutations
+            Ea, Ex = E[2], E[idx]
+            a, x = S[2], S[idx]
+            # The other 2 final state particles besides a and x have indices
+            idx_1 = swap_dictionary[12 - idx][0]
+            idx_2 = swap_dictionary[12 - idx][1]
+            if a[3] == x[idx] and mp != mq:
+                R1 = e1 * e3  # Forced to do R1 since no pq permutation
+                S_1 = rotate(S_parity, R1)
+                x_new = S_1[3]
+                x_12 = x_new - x_new[3] * e3
+                a_initial = S[2]
+                a_12 = a_initial - a_initial[3] * e3
+                if a_12 == -x_12:  # If we need a pi rotation then use this construction
+                    R2 = e1 * e2
+                else:
+                    n = (a_12 + x_12).normal()
+                    R2 = a_12.normal() * n
+                S_2 = rotate(S_1, R2)
+                # (ax permutation) index 2 corresponds to a and index idx corresponds to x in the list S
+                S_final = swap(S_2, 2, idx)
+                if S == S_final:
+                    non_chiral_states.append([S, E])
+                    flag = True  # Flag is set to true when one of the permutations managed to map everything back
+                    break
+                # Last check to make here is to swap the other 2 final particles if we can
+                elif E[idx_1] == E[idx_2] and M[idx_1] == M[idx_2] and S == swap(S_final, idx_1, idx_2):
+                    non_chiral_states.append([S, E])
+                    flag = True  # Flag is set to true when one of the permutations managed to map everything back
+                    break
+                else:
+                    continue
+            # For ax and pq permutations
+            # If i have pq permutation and energies of a, x match and z component of a,x match in magnitude
+            else:
+                a_initial = S[2]
+                a_12 = a_initial - a_initial[3] * e3
+                if a[3] == -x[3]:  # if the z comp of a,b is opposite
+                    x_new = S_parity[idx]
+                    x_12 = x_new - x_new[3] * e3  # Project x into the 1-2 plane
+                    # If the following is true it means we need to construct a rotor to do a pi rotation in the 1-2 plane
+                    if a_12 == -x_12:
+                        R2 = e1 * e2
+                        S_final = rotate(S_parity, R2)  # Only use R2 and not R1
+                        S_final = swap(S_final, 0, 1)  # Swap p and q
+                        S_final = swap(S_final, 2, idx)  # Swap a and x
+                        if S == S_final:
+                            non_chiral_states.append([S, E])
+                            flag = True
+                            break
+                        elif E[idx_1] == E[idx_2] and M[idx_1] == M[idx_2] and S == swap(S_final, idx_1, idx_2):
+                            non_chiral_states.append([S, E])
+                            flag = True  # Flag is set to true when one of the permutations managed to map everything back
+                            break
+                        else:
+                            continue
+                    else:
+                        n = (a_12 + x_12).normal()
+                        R2 = a_12.normal() * n
+                        S_final = rotate(S_parity, R2)  # only use R2 and not R1
+                        S_final = swap(S_final, 0, 1)  # swap p and q
+                        S_final = swap(S_final, 2, idx)  # swap a and b
+                        if S == S_final:
+                            non_chiral_states.append([S, E])
+                            flag = True
+                            break
+                        elif E[idx_1] == E[idx_2] and M[idx_1] == M[idx_2] and S == swap(S_final, idx_1, idx_2):
+                            non_chiral_states.append([S, E])
+                            flag = True  # Flag is set to true when one of the permutations managed to map everything back
+                            break
+                        else:
+                            continue
+                else:  # If the z component of a,x is equal
+                    # Forced to do R1 since no pq permutation and so we have to bring the parity b
+                    # which has opposite sign z back to positive sign
+                    R1 = e1 * e3
+                    S_1 = rotate(S_parity, R1)
+                    x_new = S_1[idx]
+                    x_12 = x_new - x_new[3] * e3
+                    a_initial = S[2]
+                    a_12 = a_initial - a_initial[3] * e3
+                    if a_12 == -x_12:
+                        R2 = e1 * e2
+                    else:
+                        n = (a_12 + x_12).normal()
+                        R2 = a_12.normal() * n
+                    S_2 = rotate(S_1, R2)
+                    # (ax permutation) index 2 corresponds to a and index 3 corresponds to b in the list S
+                    S_final = swap(S_2, 2, idx)
+                    if S == S_final:
+                        non_chiral_states.append([S, E])
+                        flag = True
+                        break
+                    elif E[idx_1] == E[idx_2] and M[idx_1] == M[idx_2] and S == swap(S_final, idx_1, idx_2):
+                        non_chiral_states.append([S, E])
+                        flag = True  # Flag is set to true when one of the permutations managed to map everything back
+                        break
+                    else:
+                        continue
+        if not flag:  # If any available permutation has not managed to map everything back to itself then print chiral
+            chiral_states.append([S, E])
 
-    S, E = construct_non_chiral_state()
-
-    R1 = e1*e3
-
-    # Map p, q and a back to themselves
-    S1 = parity(S)
-    S2 = rotate(S1, R1)
-    S3 = swap(S2,2,3)  # input 2 corresponds to S[2] = a and 3 to b since S = p q a b c d
-    S4 = swap(S3,4,5)  # input 4 corresponds to a and 5 to b since S = p q a b c d
-    final = S4
-
-    return S, E, final
-
-e1, e2, e3 = blades['e1'], blades['e2'], blades['e3']
+    return non_chiral_states, chiral_states
 
 chiral_states = []
 non_chiral_states = []
 
-for _ in range(50):
+for _ in range(10):
 
-    S, E, final = chirality_test_distinct_masses()
+    non_chiral_states_tmp, chiral_states_tmp = chirality_test()
+    non_chiral_states += non_chiral_states_tmp
+    chiral_states += chiral_states_tmp
 
-    if S == final:
-        non_chiral_states.append([S, E])
-    else:
-        chiral_states.append([S, E])
-
-    S, E, final = chirality_test_same_masses()
-
-    if S == final:
-        non_chiral_states.append([S, E])
-    else:
-        chiral_states.append([S, E])
-
-# The first is slot is incremented for every true and the second for every false
+# The first slot is incremented for every true and the second for every false
 non_chiral_evaluation_on_logic_statement = [0, 0]
 chiral_evaluation_on_logic_statement = [0, 0]
 
