@@ -368,7 +368,6 @@ def chirality_test():
         flag = False  # Flag is set to true when one of the permutations managed to map everything back
         for idx in permute_with_a:
             # For ax permutations but no pq permutations
-            Ea, Ex = E[2], E[idx]
             a, x = S[2], S[idx]
             # The other 2 final state particles besides a and x have indices
             idx_1 = swap_dictionary[12 - idx][0]
@@ -466,52 +465,65 @@ def chirality_test():
                         break
                     else:
                         continue
-        if not flag:  # If any available permutation has not managed to map everything back to itself then print chiral
-            chiral_states.append([S, E])
+        if not flag: # If no permutation managed to map everything back try without permuting otherwise set to chiral
+            a_12 = a - a[3] * e3
+            R = a_12.normal() * e3
+            S_final = rotate(S_parity, R)
+            if S == S_final:
+                non_chiral_states.append([S, E])
+            elif permute_with_b and 2 not in permute_with_b:  # Check if non-chiral for (bc) or (bd)
+                for idx in permute_with_b:
+                    if S == swap(S_final, 3, idx):
+                        non_chiral_states.append([S, E])
+            elif mc == md and Ec == Ed:  # Final check available (cd)
+                if S == swap(S_final, 4, 5):
+                    non_chiral_states.append([S, E])
+            else:
+                chiral_states.append([S, E])
 
     return non_chiral_states, chiral_states
 
-chiral_states = []
-non_chiral_states = []
-
-for _ in range(10):
-
-    non_chiral_states_tmp, chiral_states_tmp = chirality_test()
-    non_chiral_states += non_chiral_states_tmp
-    chiral_states += chiral_states_tmp
-
-# The first slot is incremented for every true and the second for every false
-non_chiral_evaluation_on_logic_statement = [0, 0]
-chiral_evaluation_on_logic_statement = [0, 0]
-
-for non_chiral_state in non_chiral_states:
-    flag = logic_statement_true_for_non_chiral(non_chiral_state[0], non_chiral_state[1])
-    if flag:
-        non_chiral_evaluation_on_logic_statement[0] += 1
-    else:
-        non_chiral_evaluation_on_logic_statement[1] += 1
-
-for chiral_state in chiral_states:
-    flag = logic_statement_true_for_non_chiral(chiral_state[0], chiral_state[1])
-    if flag:
-        chiral_evaluation_on_logic_statement[0] += 1
-    else:
-        chiral_evaluation_on_logic_statement[1] += 1
-
-x = ['True', 'False']
-height_non_chiral = [non_chiral_evaluation_on_logic_statement[0], non_chiral_evaluation_on_logic_statement[1]]
-height_chiral = [chiral_evaluation_on_logic_statement[0], chiral_evaluation_on_logic_statement[1]]
-
-plt.bar(x, height_non_chiral, color = 'k', width = 0.1)
-plt.title('Non-chiral states evaluated on the logic statement\nwhich is true iff the input is non-chiral')
-plt.ylabel('Frequency')
-plt.show()
-# plt.savefig('non_chiral_collision_logic_statement_test.pdf', bbox_inches='tight')
+# chiral_states = []
+# non_chiral_states = []
 #
-plt.bar(x, height_chiral, color = 'k', width = 0.1)
-plt.title('Chiral states evaluated on the logic statement\nwhich is true iff the input is non-chiral')
-plt.ylabel('Frequency')
-plt.show()
+# for _ in range(10):
+#
+#     non_chiral_states_tmp, chiral_states_tmp = chirality_test()
+#     non_chiral_states += non_chiral_states_tmp
+#     chiral_states += chiral_states_tmp
+#
+# # The first slot is incremented for every true and the second for every false
+# non_chiral_evaluation_on_logic_statement = [0, 0]
+# chiral_evaluation_on_logic_statement = [0, 0]
+#
+# for non_chiral_state in non_chiral_states:
+#     flag = logic_statement_true_for_non_chiral(non_chiral_state[0], non_chiral_state[1])
+#     if flag:
+#         non_chiral_evaluation_on_logic_statement[0] += 1
+#     else:
+#         non_chiral_evaluation_on_logic_statement[1] += 1
+#
+# for chiral_state in chiral_states:
+#     flag = logic_statement_true_for_non_chiral(chiral_state[0], chiral_state[1])
+#     if flag:
+#         chiral_evaluation_on_logic_statement[0] += 1
+#     else:
+#         chiral_evaluation_on_logic_statement[1] += 1
+#
+# x = ['True', 'False']
+# height_non_chiral = [non_chiral_evaluation_on_logic_statement[0], non_chiral_evaluation_on_logic_statement[1]]
+# height_chiral = [chiral_evaluation_on_logic_statement[0], chiral_evaluation_on_logic_statement[1]]
+#
+# plt.bar(x, height_non_chiral, color = 'k', width = 0.1)
+# plt.title('Non-chiral states evaluated on the logic statement\nwhich is true iff the input is non-chiral')
+# plt.ylabel('Frequency')
+# plt.show()
+# # plt.savefig('non_chiral_collision_logic_statement_test.pdf', bbox_inches='tight')
+# #
+# plt.bar(x, height_chiral, color = 'k', width = 0.1)
+# plt.title('Chiral states evaluated on the logic statement\nwhich is true iff the input is non-chiral')
+# plt.ylabel('Frequency')
+# plt.show()
 # plt.savefig('chiral_collision_logic_statement_test.pdf', bbox_inches='tight')
 
 # -------------------------------------------
