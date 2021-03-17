@@ -327,8 +327,6 @@ def chirality_test():
 
     S, E, M = construct_non_chiral_state()
 
-    S_parity = parity(S)  # Perform parity on the set of momenta
-
     same_mass_with_a = [idx for idx in range(len(M)) if M[idx] == M[2] and idx != 2]
     same_energy_with_a = [idx for idx in range(len(E)) if E[idx] == E[2] and idx != 2]
     # Holds the indices of particles that can be permuted with a
@@ -339,130 +337,204 @@ def chirality_test():
     # Holds the indices of particles that can be permuted with b
     permute_with_b = list(set(same_mass_with_b) and set(same_energy_with_b))
 
-    # The indices of b,c,d in S are 3,4,5 which sum to 12. If I can permute a with eg b then I need to check if I can
-    # silmutaneously permute c,d with indices [4,5] so the dictionary for 12-3=9 points to [4,5] where 3 is b
-    swap_dictionary = {9: [4, 5], 8: [3, 5], 7: [3, 4]}
+    same_mass_with_c = [idx for idx in range(len(M)) if M[idx] == M[4] and idx != 4]
+    same_energy_with_c = [idx for idx in range(len(E)) if E[idx] == E[4] and idx != 4]
+    # Holds the indices of particles that can be permuted with c
+    permute_with_c = list(set(same_mass_with_c) and set(same_energy_with_c))
 
-    a = S[2] # initial 3-momentum of a
-    mp, mq, mc, md = M[0], M[1], M[4], M[5]
-    Ec, Ed = E[4], E[5]
+    same_mass_with_d = [idx for idx in range(len(M)) if M[idx] == M[5] and idx != 5]
+    same_energy_with_d = [idx for idx in range(len(E)) if E[idx] == E[5] and idx != 5]
+    # Holds the indices of particles that can be permuted with b
+    permute_with_d = list(set(same_mass_with_d) and set(same_energy_with_d))
 
-    if not permute_with_a:
-        # For no a permutations at all and for pq permutations
-        # ie pq permutations don't change anything if there are no final state permutations
-        a_12 = a - a[3] * e3
-        R = a_12.normal() * e3
-        S_final = rotate(S_parity, R)
-        if S == S_final:
-            non_chiral_states.append([S, E])
-        elif permute_with_b and (2 not in permute_with_b):  # Check if non-chiral for (bc) or (bd)
-            for idx in permute_with_b:
-                if S == swap(S_final, 3, idx):
-                    non_chiral_states.append([S, E])
-        elif mc == md and Ec == Ed:  # Final check available (cd)
-            if S == swap(S_final, 4, 5):
-                non_chiral_states.append([S, E])
-        else:
-            chiral_states.append([S, E])
-    else:
-        flag = False  # Flag is set to true when one of the permutations managed to map everything back
+    permutation_dictionary = {3: permute_with_b, 4: permute_with_c, 5: permute_with_d}
+
+    S_parity = parity(S)  # Perform parity on the set of momenta
+
+    flag = False
+
+    if M[0] != M[1] or E[0] != E[1]: # If we cant permute p and q
+
+        # Map p and q back with R = e1e3
+
+        R1 = e1*e3
+        S1 = rotate(S_parity, R1)
+
+        # For every x that can be permuted with a, rotate x to a in the 1-2 plane and swap them
+
         for idx in permute_with_a:
-            # For ax permutations but no pq permutations
-            a, x = S[2], S[idx]
-            # The other 2 final state particles besides a and x have indices
-            idx_1 = swap_dictionary[12 - idx][0]
-            idx_2 = swap_dictionary[12 - idx][1]
-            if mp != mq: # no (pq)
-                R1 = e1 * e3  # Forced to do R1 since no pq permutation
-                S_1 = rotate(S_parity, R1)
-                x_new = S_1[idx] # Now map x to original a and swap them
-                x_12 = x_new - x_new[3] * e3
-                a_initial = S[2]
-                a_12 = a_initial - a_initial[3] * e3
-                n = (a_12 + x_12).normal()
-                if n == 0:  # If we need a pi rotation then use this construction
-                    R2 = e1 * e2
-                else:
-                    R2 = a_12.normal() * n
-                S_2 = rotate(S_1, R2)
-                # (ax permutation) index 2 corresponds to a and index idx corresponds to x in the list S
-                S_final = swap(S_2, 2, idx)
-                if S == S_final:
-                    non_chiral_states.append([S, E])
-                    flag = True  # Flag is set to true when one of the permutations managed to map everything back
-                    break
-                # Last check to make here is to swap the other 2 final particles if we can
-                elif E[idx_1] == E[idx_2] and M[idx_1] == M[idx_2] and S == swap(S_final, idx_1, idx_2):
-                    non_chiral_states.append([S, E])
-                    flag = True  # Flag is set to true when one of the permutations managed to map everything back
-                    break
-                else:
-                    continue
-            else: # With (pq) permutation possible
-                # Take x->a and then (ax),(pq), also check (yz)
-                x_new = S_parity[idx]
-                x_12 = x_new - x_new[3] * e3
-                a_initial = S[2]
-                a_12 = a_initial - a_initial[3] * e3
-                n = (a_12 + x_12).normal()
-                if n == 0:  # If we need a pi rotation then use this construction
-                    R2 = e1 * e2
-                else:
-                    R2 = a_12.normal() * n
-                S_1 = rotate(S_parity, R2)
-                # (ax permutation) index 2 corresponds to a and index idx corresponds to x in the list S
-                S_2 = swap(S_1, 2, idx)
-                S_final = swap(S_2, 0, 1)
-                if S == S_final:
-                    non_chiral_states.append([S, E])
-                    flag = True  # Flag is set to true when one of the permutations managed to map everything back
-                    break
-                # Last check to make here is to swap the other 2 final particles if we can
-                elif E[idx_1] == E[idx_2] and M[idx_1] == M[idx_2] and S == swap(S_final, idx_1, idx_2):
-                    non_chiral_states.append([S, E])
-                    flag = True  # Flag is set to true when one of the permutations managed to map everything back
-                    break
-                else: # Try without permuting (pq)
-                    R1 = e1 * e3  # Forced to do R1 since no pq permutation
-                    S_1 = rotate(S_parity, R1)
-                    x_new = S_1[idx]  # Now map x to original a and swap them
-                    x_12 = x_new - x_new[3] * e3
-                    a_initial = S[2]
-                    a_12 = a_initial - a_initial[3] * e3
-                    n = (a_12 + x_12).normal()
-                    if n == 0:  # If we need a pi rotation then use this construction
-                        R2 = e1 * e2
-                    else:
-                        R2 = a_12.normal() * n
-                    S_2 = rotate(S_1, R2)
-                    # (ax permutation) index 2 corresponds to a and index idx corresponds to x in the list S
-                    S_final = swap(S_2, 2, idx)
-                    if S == S_final:
-                        non_chiral_states.append([S, E])
-                        flag = True  # Flag is set to true when one of the permutations managed to map everything back
-                        break
-                    # Last check to make here is to swap the other 2 final particles if we can
-                    elif E[idx_1] == E[idx_2] and M[idx_1] == M[idx_2] and S == swap(S_final, idx_1, idx_2):
-                        non_chiral_states.append([S, E])
-                        flag = True  # Flag is set to true when one of the permutations managed to map everything back
-                        break
-                    else:
-                        continue
-        if not flag: # If no permutation managed to map everything back try without permuting otherwise set to chiral
-            a_12 = a - a[3] * e3
-            R = a_12.normal() * e3
-            S_final = rotate(S_parity, R)
-            if S == S_final:
-                non_chiral_states.append([S, E])
-            elif permute_with_b and 2 not in permute_with_b:  # Check if non-chiral for (bc) or (bd)
-                for idx in permute_with_b:
-                    if S == swap(S_final, 3, idx):
-                        non_chiral_states.append([S, E])
-            elif mc == md and Ec == Ed:  # Final check available (cd)
-                if S == swap(S_final, 4, 5):
-                    non_chiral_states.append([S, E])
+
+            idx_list = [3, 4, 5] # To be used later to check if we can permute the other 2 other than a and x
+            idx_list.remove(idx)
+
+            x = S1[idx]
+            x_proj = x - x[3]*e3 # Project x into the 1-2 plane
+            a = S[2]
+            a_proj = a - a[3]*e3 # Project original a into the 1-2 plane
+            n = (a_proj+x_proj).normal()
+            if n == 0: # If a_proj and x_proj are anti-parallel we need R2 to be a pi rotation
+                R2 = e1*e2
             else:
-                chiral_states.append([S, E])
+                R2 = a_proj.normal()*n
+            S2 = rotate(S1, R2)
+            S3 = swap(S2, 2, idx) # Swap a and x where the index of a is 2 and the index of x is idx
+
+            if S == S3:
+                flag = True # The flag is set to true if the state is non-chiral
+
+            # Check if the other 2 other a and x can be permuted
+
+            idx_1, idx_2 = idx_list[0], idx_list[1]
+            permute_with_1 = permutation_dictionary[idx_1]
+            if idx_2 in permute_with_1:
+                S4 = swap(S3, idx_1, idx_2)
+                if S == S4:
+                    flag = True
+
+    else: # If we can permute p and q
+
+        # Map p and q back with (pq) and without using R = e1e3
+
+        S1 = swap(S_parity.copy(), 0, 1) # Swaps p and q
+
+        # Now we act as if p and q are fixed, although we know that we can perform e2e3 or e1e3 while using (pq)
+        # Using e1e3 has been tried in the case where (pq) is not available so non-chirality will be catched there if
+        # the state needs indeed e1e3 to be mapped back
+
+        # We now go to the subspace (1-2 plane) perpendicular to p,q and map a as before
+
+        for idx in permute_with_a:
+
+            idx_list = [3, 4, 5] # To be used later to check if we can permute the other 2 other than a and x
+            idx_list.remove(idx)
+
+            x = S1[idx]
+            x_proj = x - x[3]*e3 # Project x into the 1-2 plane
+            a_proj = S[2] - S[2][3]*e3 # Project original a into the 1-2 plane
+            n = (a_proj+x_proj).normal()
+            if n == 0: # If a_proj and x_proj are anti-parallel we need R2 to be a pi rotation
+                R2 = e1*e2
+            else:
+                R2 = a_proj.normal()*n
+            S2 = rotate(S1, R2)
+            S3 = swap(S2, 2, idx) # Swap a and x where the index of a is 2 and the index of x is idx
+
+            if S == S3:
+                flag = True # The flag is set to true if the state is non-chiral
+
+            # Check if the other 2 other a and x can be permuted
+
+            idx_1, idx_2 = idx_list[0], idx_list[1]
+            permute_with_1 = permutation_dictionary[idx_1]
+            if idx_2 in permute_with_1:
+                S4 = swap(S3, idx_1, idx_2)
+                if S == S4:
+                    flag = True
+
+        # Now try with using R = e1e3 with no (pq) even though we can do (pq)
+
+        # Map p and q back with R = e1e3
+
+        R1 = e1*e3
+        S1 = rotate(S_parity, R1)  # Swaps p and q
+
+        # Now we act as if p and q are fixed, although we know that we can perform e2e3 or e1e3 while using (pq)
+
+        # We now go to the subspace (1-2 plane) perpendicular to p,q and map a as before
+
+        for idx in permute_with_a:
+
+            idx_list = [3, 4, 5]  # To be used later to check if we can permute the other 2 other than a and x
+            idx_list.remove(idx)
+
+            x = S1[idx]
+            x_proj = x - x[3] * e3  # Project x into the 1-2 plane
+            a = S[2]
+            a_proj = a - a[3] * e3  # Project original a into the 1-2 plane
+            n = (a_proj + x_proj).normal()
+            if n == 0:  # If a_proj and x_proj are anti-parallel we need R2 to be a pi rotation
+                R2 = e1 * e2
+            else:
+                R2 = a_proj.normal() * n
+            S2 = rotate(S1, R2)
+            S3 = swap(S2, 2, idx)  # Swap a and x where the index of a is 2 and the index of x is idx
+
+            if S == S3:
+                flag = True  # The flag is set to true if the state is non-chiral
+
+            # Check if the other 2 other a and x can be permuted
+
+            idx_1, idx_2 = idx_list[0], idx_list[1]
+            permute_with_1 = permutation_dictionary[idx_1]
+            if idx_2 in permute_with_1:
+                S4 = swap(S3, idx_1, idx_2)
+                if S == S4:
+                    flag = True
+
+    # We now try without using permutations for a. We can map p,q,a simultaneously and check (bcd)
+
+    a = S[2]
+    a_proj = a - a[3]*e3
+    R = a_proj.normal()*e3 # Performs a pi rotation in the plane spanned by the 3 axis and a
+    S1 = rotate(S_parity, R)
+
+    if S == S1:
+        flag = True
+
+    # Also check (bcd)
+
+    if permute_with_b and (2 not in permute_with_b): # If b can be permuted with c or d (but not with a which is fixed)
+
+        for idx in permute_with_b:
+
+            S2 = swap(S1, 3, idx)
+
+            if S == S2: # Remember b has index 3 in the state list S
+                flag = True
+
+            if 4 in permute_with_d: # If c (with index 4 in the S list) can be permuted with d
+
+                S3 = swap(S2, 4, 5)
+
+                if S == S3:
+                    flag = True
+
+    if permute_with_c and (2 not in permute_with_c):  # If c can be permuted with b or d (but not with a which is fixed)
+
+        for idx in permute_with_c:
+
+            S2 = swap(S1, 4, idx) # The index 4 corresponds to c
+
+            if S == S2:
+                flag = True
+
+            if 3 in permute_with_d:  # If b (with index 3 in the S list) can be permuted with d
+
+                S3 = swap(S2, 3, 5)
+
+                if S == S3:
+                    flag = True
+
+    if permute_with_d and (2 not in permute_with_d):  # If d can be permuted with b or c (but not with a which is fixed)
+
+        for idx in permute_with_d:
+
+            S2 = swap(S1, 5, idx) # The index 5 corresponds to d
+
+            if S == S2:
+                flag = True
+
+            if 3 in permute_with_c:  # If b (with index 3 in the S list) can be permuted with c
+
+                S3 = swap(S2, 3, 4)
+
+                if S == S3:
+                    flag = True
+
+    if flag:
+        non_chiral_states.append([S,E])
+    else:
+        chiral_states.append([S,E])
 
     return non_chiral_states, chiral_states
 
