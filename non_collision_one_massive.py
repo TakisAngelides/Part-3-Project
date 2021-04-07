@@ -82,9 +82,9 @@ def logic_statement_true_for_non_chiral(S, E, mp, mq):
 def construct_state():
 
     B = (uniform(-10, 10) * (e1 ^ e2) + uniform(-10, 10) * (e1 ^ e3) + uniform(-10, 10) * (e2 ^ e3)).normal()
-    R = e ^ (uniform(0, 2 * pi) * B)
+    R = (e ^ (uniform(0, 2 * pi) * B)).normal()
 
-    rdm = randint(0, 0)
+    rdm = randint(0, 4)
 
     if rdm == 0:
         ma, mb, mc, md = randint(0, 10), randint(0, 10), randint(0, 10), randint(0, 10)
@@ -134,7 +134,23 @@ def construct_state():
     E = [Ea, Eb, Ec, Ed]
     S = [a, b, c, d]
 
+    print(rdm)
+
     return S, E, M
+
+def permute_with_idx(M, E, idx_to_permute):
+
+    same_mass_with_idx = [idx for idx in range(len(M)) if M[idx] == M[idx_to_permute] and idx != idx_to_permute]
+    same_energy_with_idx = [idx for idx in range(len(E)) if E[idx] == approx(E[idx_to_permute]) and idx != idx_to_permute]
+
+    return list(set(same_mass_with_idx) and set(same_energy_with_idx))
+
+def permutation_boolean(M, E, idx_1, idx_2):
+
+    if (M[idx_1] == M[idx_2]) and (E[idx_1] == E[idx_2]):
+        return True
+    else:
+        return False
 
 def chirality_test():
 
@@ -142,214 +158,173 @@ def chirality_test():
     non_chiral_states = []
 
     S, E, M = construct_state()
-    a, b, c, d = S[0], S[1], S[2], S[3]
+    a, b, c, d = S[0], S[1], S[2], S[3] # p and q are 0 so we do not carry them around in the S list
 
-    same_mass_with_a = [idx for idx in range(len(M)) if M[idx] == M[0] and idx != 0]
-    same_energy_with_a = [idx for idx in range(len(E)) if E[idx] == approx(E[0]) and idx != 0]
-    # Holds the indices of particles that can be permuted with a
-    permute_with_a = list(set(same_mass_with_a) and set(same_energy_with_a))
-    len_a = len(permute_with_a)
+    # These lists hold indices (as they appear in S) of the particles that can be permuted with a,b,c and d respectively
+    permute_with_a = permute_with_idx(M, E, 0)
+    permute_with_b = permute_with_idx(M, E, 1)
+    permute_with_c = permute_with_idx(M, E, 2)
+    permute_with_d = permute_with_idx(M, E, 3)
 
-    same_mass_with_b = [idx for idx in range(len(M)) if M[idx] == M[1] and idx != 1]
-    same_energy_with_b = [idx for idx in range(len(E)) if E[idx] == approx(E[1]) and idx != 1]
-    # Holds the indices of particles that can be permuted with b
-    permute_with_b = list(set(same_mass_with_b) and set(same_energy_with_b))
-    len_b = len(permute_with_b)
+    S_parity = parity(S)  # Perform parity on the set of momenta
 
-    same_mass_with_c = [idx for idx in range(len(M)) if M[idx] == M[2] and idx != 2]
-    same_energy_with_c = [idx for idx in range(len(E)) if E[idx] == approx(E[2]) and idx != 2]
-    # Holds the indices of particles that can be permuted with c
-    permute_with_c = list(set(same_mass_with_c) and set(same_energy_with_c))
-    len_c = len(permute_with_c)
+    flag = False # The flag is set to true if the state is non-chiral
 
-    same_mass_with_d = [idx for idx in range(len(M)) if M[idx] == M[3] and idx != 3]
-    same_energy_with_d = [idx for idx in range(len(E)) if E[idx] == approx(E[3]) and idx != 3]
-    # Holds the indices of particles that can be permuted with d
-    permute_with_d = list(set(same_mass_with_d) and set(same_energy_with_d))
-    len_d = len(permute_with_d)
+    for idx in permute_with_a+[0]: # For every x that can be permuted with a, map x to a and perform (ax)
 
-    len_list = [len_a, len_b, len_c, len_d]
-
-    len_max = max(len_list)
-
-    flag = False # This is set to true when the state is non-chiral
-    if len_max == 0: # If there are no permutations
-        S1 = parity(S)
-        if a^b != 0:
-            R1 = (a^b).normal()
-            S2 = rotate(S1, R1)
-        elif a^c != 0:
-            R1 = (a^c).normal()
-            S2 = rotate(S1, R1)
+        x = S_parity[idx]
+        n = a+x
+        if n == 0: # If a and x are collinear we construct any v perpendicular to a and do a pi rotation in the plane av
+            if a[2] != 0 or a[3] != 0:
+                v = -I*(a^e1) # Cross product a x e1 in geometric algebra, I is the pseudoscalar I = e1e2e3
+            else:
+                v = -I*(a^e2)
+            R1 = (a^v).normal()
         else:
-            flag = True # If b and c are colinear then the state is non-chiral
-        if flag or S == S2:
-            non_chiral_states.append([S,E])
-        else:
-            chiral_states.append([S,E])
+            R1 = a.normal()*n.normal()
 
-    else:
+        S1 = rotate(S_parity, R1)
+        S2 = swap(S1, 0, idx) # Performs (ax) where the index 0 corresponds to a in the S list
 
-        if (np.sum(len_list) == 2): # this is the case when only 2 can be permuted (ab) (for example)
+        # At this point a is fixed to its original state
 
-            # map the ones who cant be permuted and then check or swap permutable and check
-            idx_perm = [idx for idx in range(len(len_list)) if len_list[idx] != 0] # permutable indices in S
-            idx_non_perm = [idx for idx in range(len(len_list)) if len_list[idx] == 0] # non-permutable indices in S
+        # Now we need to fix b in the plane perpendicular to a, if b has no component (a^b==0) there then we try c
 
-            x = S[idx_non_perm[0]] # These 2 are the particles that cant be permuted and we map them first
-            y = S[idx_non_perm[1]]
+        if a^b != 0: # If b is not collinear to a then it has components in the plane perpendicular to a
 
-            z = S[idx_perm[0]] # These 2 are the particles that can be permuted
-            q = S[idx_perm[1]]
+            for idx_plane in permute_with_b + [1]:
 
-            S1 = parity(S)
-            if x^y != 0: # If x and y are not colinear
-                R1 = (x^y).normal()
-                S2 = rotate(S1, R1)
-                if S == S2 or S == swap(S2, idx_perm[0], idx_perm[1]):
-                    non_chiral_states.append([S, E])
-                else:
-                    chiral_states.append([S, E])
-            else: # If x and y are colinear then use x and z for first rotation
-                if x^z != 0:
-                    R1 = (x^z).normal()
-                    S2 = rotate(S1, R1)
-                    if dot(x,q) == 0 and dot(x,z) == 0: # If z,q are in the plane perpendicular to colinear mapped x,y
-                        n = (q+S2[idx_perm[0]]).normal() # take z_rotated which has index idx_perm[0] to q and swap
-                        R2 = q.normal()*n
-                        S3 = rotate(S2, R2)
-                        S4 = swap(S3, idx_perm[0], idx_perm[1])
-                        if S == S4:
-                            non_chiral_states.append([S, E])
-                        else:
-                            chiral_states.append([S, E])
+                if idx_plane == 0: # Since a is already fixed
+                    continue
+
+                # If we have a plane P with its perpendicular being a and we have a vector y, then the component of y
+                # in the plane P is given in geometric algebra by the rejection y_plane = a*(a^y)
+
+                b_plane = a*(a^b)
+                y = S2[idx_plane]
+                y_plane = a*(a^y)
+
+                # If y is collinear with a then it has no component in the plane perpendicular to a, so even if it can
+                # be permuted with b, we cannot map y_plane to b_plane and then swap because y_plane is 0
+
+                if y_plane == 0:
+                    continue
+                else: # Here we map y_plane to b_plane and perform (yb)
+                    m = y_plane + b_plane
+                    if m == 0: # In this case we need a pi rotation in this plane we are working in
+                        # We construct another vector in this plane with the cross product a x b_plane
+                        w_plane = -I*(a^b_plane)
+                        R2 = (w_plane^b_plane).normal()
                     else:
-                        if S == S2 or S == swap(S2, idx_perm[0], idx_perm[1]):
-                            non_chiral_states.append([S, E])
-                        else:
-                            chiral_states.append([S, E])
-                else: # Here I have 3 colinear vectors so state is non-chiral
-                    non_chiral_states.append([S, E])
+                        R2 = b_plane.normal()*m.normal()
 
-        elif (np.sum(len_list) == 4): # This is the case of permutations of the type (ab)(cd)
+                S3 = rotate(S2, R2) # Map y_plane to b_plane
+                S4 = swap(S3, 1, idx_plane) # Perform (yb)
 
-            # Start with a and find the particle x it can be permuted with, map them both to their selves. now the only
-            # rotation we have available is pi in the plane spanned by (a cross x) = -I(a^x) (2.80 Lasenby) and a - x
+                if S == S4:
+                    flag = True
 
-            a = S[0]
-            x = S[permute_with_a[0]]
+                if permutation_boolean(M, E, 2, 3): # If we can perform (cd)
+                    S5 = swap(S4, 2, 3)
+                    if S == S5:
+                        flag = True
 
-            S1 = parity(S)
-            R1 = (a^x).normal() # Note this will not work if a, x are explicitly colinear but this is very unlikely
-            S2 = rotate(S1, R1)
-            R2 = ((-I*(a^x))^(a-x)).normal() # Rotation by pi in the plane spanned by (a cross x) = -I(a^x) and a - x
 
-            S3 = rotate(S2, R2)
-            S4 = swap(S3, 0, permute_with_a[0]) # this includes the extra pi rotation I can make because of (ax)
+        elif a^c != 0:
 
-            diff = 6-permute_with_a[0] # 6 = 0 + 1 + 2 + 3 -> the indices of the particles in S
-            if diff == 5:
-                idx_1, idx_2 = 2, 3 # the other two other than a,x are c (S[2]) and d (S[3])
-            elif diff == 4:
-                idx_1, idx_2 = 1, 3
-            else:
-                idx_1, idx_2 = 1, 2
+            for idx_plane in permute_with_c + [2]:
 
-            if S == S2 or S == swap(S2, idx_1, idx_2) or S == S4 or S == swap(S4, idx_1, idx_2):
-                non_chiral_states.append([S, E])
-            else:
-                chiral_states.append([S, E])
+                # Since a and b are already fixed, b is fixed because we fixed a and to get into this elif we need
+                # b to be collinear with a and hence when we fixed a we automatically fixed b
+                if idx_plane == 0 or idx_plane == 1:
+                    continue
 
-        elif (np.sum(len_list) == 6): # this is the case of permutations of the type (abc)
+                # If we have a plane P with its perpendicular being a and we have a vector y, then the component of y
+                # in the plane P is given in geometric algebra by the rejection y_plane = a*(a^y)
 
-            # find the particle x that cant be permuted and map to itself along with any other of y,z,q then we can
-            # check or swap the other 2 and check
+                c_plane = a * (a ^ c)
+                y = S2[idx_plane]
+                y_plane = a * (a ^ y)
 
-            idx_non_perm = [idx for idx in range(len(len_list)) if len_list[idx] == 0]
-            idx_list = [0,1,2,3]
-            idx_list.remove(idx_non_perm[0])
+                # If y is collinear with a then it has no component in the plane perpendicular to a, so even if it can
+                # be permuted with c, we cannot map y_plane to c_plane and then swap because y_plane is 0
 
-            x = S[idx_non_perm[0]]
-            y = S[idx_list[0]]
-            idx_1, idx_2 = idx_list[1], idx_list[2]
+                if y_plane == 0:
+                    continue
+                else:  # Here we map y_plane to c_plane and perform (yc)
+                    m = y_plane + c_plane
+                    if m == 0:  # In this case we need a pi rotation in this plane we are working in
+                        # We construct another vector in this plane with the cross product a x c_plane
+                        w_plane = -I * (a ^ c_plane)
+                        R2 = (w_plane ^ c_plane).normal()
+                    else:
+                        R2 = c_plane.normal() * m.normal()
 
-            S1 = parity(S)
-            R1 = (x^y).normal() # Note this will not work if x, y are explicitly colinear but this is very unlikely
+                S6 = rotate(S2, R2)  # Map y_plane to c_plane
+                S7 = swap(S6, 2, idx_plane)  # Perform (yc)
 
-            S2 = rotate(S1, R1)
+                if S == S7:
+                    flag = True
 
-            if S == S2 or S == swap(S2, idx_1, idx_2):
-                non_chiral_states.append([S, E])
-            else:
-                chiral_states.append([S, E])
+                if permutation_boolean(M, E, 1, 3): # If we can perform (bd)
+                    S8 = swap(S7, 1, 3)
+                    if S == S8:
+                        flag = True
 
-        else: # this is the (abcd) case of permutations
+        else:
+            flag = True # If a,b,c are collinear then the state is non-chiral
 
-            # map a and b then check or swap cd and check or rotate by pi in plane perpendicular to a+b swap ab and
-            # check or swap cd and check
-
-            S1 = parity(S)
-            # TODO: catch problem of a b being colinear see * below
-            R1 = (a^b).normal()
-            S2 = rotate(S1, R1) # check
-
-            S3 = swap(S, 2, 3) # check # TODO: this should change if a b are colinear see * above
-
-            R2 = ((-I*(a^b))^(a-b)).normal() # Rotation by pi in the plane spanned by (a cross b) = -I(a^b) and a - b
-            S4 = rotate(S3, R2)
-            S5 = swap(S4, 0, 1) # check # TODO: this should change if a b are colinear see * above
-            S6 = swap(S5, 2, 3) # check
-
-            if S == S2 or S == S3 or S == S5 or S == S6:
-                non_chiral_states.append([S, E])
-            else:
-                chiral_states.append([S, E])
+    if flag:
+        non_chiral_states.append([S, E])
+    else:
+        chiral_states.append([S, E])
 
     return non_chiral_states, chiral_states
 
-non_chiral_states_list = []
-chiral_states_list = []
-for iterations in range(1000):
-    S, E, M = construct_state()
-    non_chiral_states, chiral_states = chirality_test()
-    non_chiral_states_list += non_chiral_states
-    chiral_states_list += chiral_states
+# non_chiral_states_list = []
+# chiral_states_list = []
+# for iterations in range(1000):
+#     S, E, M = construct_state()
+#     non_chiral_states, chiral_states = chirality_test()
+#     non_chiral_states_list += non_chiral_states
+#     chiral_states_list += chiral_states
+#
+# print(len(non_chiral_states_list), len(chiral_states_list))
+#
+# non_chiral_evaluation_on_logic_statement = [0, 0]
+# for non_chiral_state in non_chiral_states_list:
+#     mp, mq = uniform(1, 10), uniform(1, 10)
+#     flag = logic_statement_true_for_non_chiral(non_chiral_state[0], non_chiral_state[1], mp, mq)
+#     if flag:
+#         non_chiral_evaluation_on_logic_statement[0] += 1
+#     else:
+#         non_chiral_evaluation_on_logic_statement[1] += 1
+#
+# chiral_evaluation_on_logic_statement = [0, 0]
+# for chiral_state in chiral_states_list:
+#     mp, mq = uniform(1, 10), uniform(1, 10)
+#     flag = logic_statement_true_for_non_chiral(chiral_state[0], chiral_state[1], mp, mq)
+#     if flag:
+#         chiral_evaluation_on_logic_statement[0] += 1
+#     else:
+#         chiral_evaluation_on_logic_statement[1] += 1
+#
+# x = ['True', 'False']
+# height_non_chiral = [non_chiral_evaluation_on_logic_statement[0], non_chiral_evaluation_on_logic_statement[1]]
+# height_chiral = [chiral_evaluation_on_logic_statement[0], chiral_evaluation_on_logic_statement[1]]
+#
+# plt.bar(x, height_non_chiral, color = 'k', width = 0.1)
+# plt.title('Non-chiral states evaluated on the logic statement\nwhich is true iff the input is non-chiral')
+# plt.ylabel('Frequency')
+# #plt.show()
+# #plt.savefig('non_chiral_non_collision_logic_statement_test.pdf', bbox_inches='tight')
+#
+# plt.bar(x, height_chiral, color = 'k', width = 0.1)
+# plt.title('Chiral states evaluated on the logic statement\nwhich is true iff the input is non-chiral')
+# plt.ylabel('Frequency')
+# #plt.show()
+# plt.savefig('chiral_non_collision_logic_statement_test.pdf', bbox_inches='tight')
 
-print(len(non_chiral_states_list), len(chiral_states_list))
-
-non_chiral_evaluation_on_logic_statement = [0, 0]
-for non_chiral_state in non_chiral_states_list:
-    mp, mq = uniform(1, 10), uniform(1, 10)
-    flag = logic_statement_true_for_non_chiral(non_chiral_state[0], non_chiral_state[1], mp, mq)
-    if flag:
-        non_chiral_evaluation_on_logic_statement[0] += 1
-    else:
-        non_chiral_evaluation_on_logic_statement[1] += 1
-
-chiral_evaluation_on_logic_statement = [0, 0]
-for chiral_state in chiral_states_list:
-    mp, mq = uniform(1, 10), uniform(1, 10)
-    flag = logic_statement_true_for_non_chiral(chiral_state[0], chiral_state[1], mp, mq)
-    if flag:
-        chiral_evaluation_on_logic_statement[0] += 1
-    else:
-        chiral_evaluation_on_logic_statement[1] += 1
-
-x = ['True', 'False']
-height_non_chiral = [non_chiral_evaluation_on_logic_statement[0], non_chiral_evaluation_on_logic_statement[1]]
-height_chiral = [chiral_evaluation_on_logic_statement[0], chiral_evaluation_on_logic_statement[1]]
-
-plt.bar(x, height_non_chiral, color = 'k', width = 0.1)
-plt.title('Non-chiral states evaluated on the logic statement\nwhich is true iff the input is non-chiral')
-plt.ylabel('Frequency')
-#plt.show()
-#plt.savefig('non_chiral_non_collision_logic_statement_test.pdf', bbox_inches='tight')
-
-plt.bar(x, height_chiral, color = 'k', width = 0.1)
-plt.title('Chiral states evaluated on the logic statement\nwhich is true iff the input is non-chiral')
-plt.ylabel('Frequency')
-#plt.show()
-plt.savefig('chiral_non_collision_logic_statement_test.pdf', bbox_inches='tight')
 
 
 
