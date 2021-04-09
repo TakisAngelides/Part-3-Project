@@ -58,9 +58,23 @@ def logic_statement_true_for_non_chiral(S, E):
 
     return (case_1 or case_2 or case_3 or case_4 or case_5 or case_6)
 
+def permute_with_idx(M, E, idx_to_permute):
+
+    same_mass_with_idx = [idx for idx in range(len(M)) if M[idx] == M[idx_to_permute] and idx != idx_to_permute and idx != 0 and idx != 1]
+    same_energy_with_idx = [idx for idx in range(len(E)) if E[idx] == approx(E[idx_to_permute]) and idx != idx_to_permute]
+
+    return list(set(same_mass_with_idx) and set(same_energy_with_idx))
+
+def permutation_boolean(M, E, idx_1, idx_2):
+
+    if (M[idx_1] == M[idx_2]) and (E[idx_1] == E[idx_2]):
+        return True
+    else:
+        return False
+
 def construct_state():
 
-    rdm = randint(1, 2)
+    rdm = randint(0, 2)
 
     if rdm == 0:
         ma, mb, mc, md = randint(0, 10), randint(0, 10), randint(0, 10), randint(0, 10)
@@ -102,84 +116,75 @@ def chirality_test():
     S, E, M = construct_state()
     a, b, c, d = S[0], S[1], S[2], S[3]
 
-    same_mass_with_b = [idx for idx in range(len(M)) if M[idx] == M[1] and idx != 1]
-    same_energy_with_b = [idx for idx in range(len(E)) if E[idx] == approx(E[1]) and idx != 1]
-    # Holds the indices of particles that can be permuted with b
-    permute_with_b = list(set(same_mass_with_b) and set(same_energy_with_b))
-    len_b = len(permute_with_b)
+    permute_with_b = permute_with_idx(M, E, 1)
+    permute_with_c = permute_with_idx(M, E, 2)
 
-    same_mass_with_c = [idx for idx in range(len(M)) if M[idx] == M[2] and idx != 2]
-    same_energy_with_c = [idx for idx in range(len(E)) if E[idx] == approx(E[2]) and idx != 2]
-    # Holds the indices of particles that can be permuted with c
-    permute_with_c = list(set(same_mass_with_c) and set(same_energy_with_c))
-    len_c = len(permute_with_c)
+    S_parity = parity(S)  # Perform parity on the set of momenta
 
-    same_mass_with_d = [idx for idx in range(len(M)) if M[idx] == M[3] and idx != 3]
-    same_energy_with_d = [idx for idx in range(len(E)) if E[idx] == approx(E[3]) and idx != 3]
-    # Holds the indices of particles that can be permuted with d
-    permute_with_d = list(set(same_mass_with_d) and set(same_energy_with_d))
-    len_d = len(permute_with_d)
+    flag = False  # The flag is set to true if the state is non-chiral
 
-    len_list = [len_b, len_c, len_d]
+    R1 = e1 * e3
+    S1 = rotate(S_parity, R1)  # Now a is fixed back to their original state
 
-    len_max = max(len_list)
+    if (b[1] != 0) or (b[2] != 0): # if b has components in the 1-2 plane
 
-    S1 = parity(S)
-    R1 = e1 * e3  # This is R_y(pi) used to map a back so that we avoid boosts and rotations in x-z,y-z planes
-    S2 = rotate(S1, R1)
+        for idx in permute_with_b + [1]:
 
-    flag = False # This is set to true when the state is non-chiral
-    if len_max == 0: # If there are no permutations
+            if idx == 0:
+                continue
 
-        b_proj = b - b[3]*e3
-        b_rot = S2[1]
-        b_rot_proj = b_rot - b_rot[3]*e3
-        # Rotate b_rot_proj back to b_proj
-        n = (b_rot_proj + b_proj).normal()
-        if n == 0:
-            R2 = e1*e2
-        else:
-            R2 = b_proj.normal()*n
-        S3 = rotate(S2, R2)
-        if S == S3:
-            flag = True
-    else:
+            x = S1[idx]
+            x_12 = x - x[3]*e3
+            b_12 = b - b[3]*e3
 
-        b_proj = b - b[3] * e3
-        b_rot = S2[1]
-        b_rot_proj = b_rot - b_rot[3] * e3
+            n = b_12 + x_12
 
-        # Rotate b_rot_proj back to b_proj
-        n = (b_rot_proj + b_proj).normal()
-        if n == 0:
-            R2 = e1 * e2
-        else:
-            R2 = b_proj.normal() * n
-        S3 = rotate(S2, R2)
-        if S == S3:
-            flag = True
+            if n == 0:
 
-        if 3 in permute_with_c: # if c and d can be permuted
-            if S == swap(S3, 2, 3):
+                R2 = e1*e2
+
+            else:
+
+                R2 = b_12.normal()*n.normal()
+
+            S2 = rotate(S1, R2)
+            S3 = swap(S2, 1, idx) # Index 1 corresponds to b
+
+            if S == S3:
                 flag = True
 
-        if permute_with_b: # In summary: a is mapped, map b (by swap) and now only freedom is swap c,d
-            for idx in permute_with_b:
-                x_rot = S2[idx]
-                x_rot_proj = x_rot - x_rot[3]*e3
-                n = (x_rot_proj+b_proj).normal()
-                if n == 0:
-                    R2 = e1*e2
-                else:
-                    R2 = b_proj.normal()*n
-                S3 = rotate(S2, R2)
-                S4 = swap(S3, idx, 1) # Swap x with b
-                if S == S3:
+            if permutation_boolean(M, E, 2, 3): # If we can permute (cd)
+                S4 = swap(S3, 2, 3)
+                if S == S4:
                     flag = True
-                if 5-idx in permute_with_c: # If c and d can be permuted
-                    S5 = swap(S4, 2, 3)
-                    if S == S5:
-                        flag = True
+
+    elif (c[1] != 0) or (c[2] != 0):
+
+        for idx in permute_with_c + [2]:
+
+            if idx == 0 or idx == 1:
+                continue
+
+            x = S1[idx]
+            x_12 = x - x[3] * e3
+            c_12 = c - c[3] * e3
+
+            n = c_12 + x_12
+
+            if n == 0:
+
+                R2 = e1 * e2
+
+            else:
+
+                R2 = c_12.normal() * n.normal()
+
+            S2 = rotate(S1, R2)
+            S3 = swap(S2, 2, idx) # Index 2 corresponds to c
+
+            if S == S3:
+                flag = True
+
     if flag:
         non_chiral_states.append([S, E])
     else:
@@ -187,52 +192,51 @@ def chirality_test():
 
     return non_chiral_states, chiral_states
 
-non_chiral_states_list = []
-chiral_states_list = []
-for iterations in range(1000):
-    S, E, M = construct_state()
-    non_chiral_states, chiral_states = chirality_test()
-    non_chiral_states_list += non_chiral_states
-    chiral_states_list += chiral_states
+# non_chiral_states_list = []
+# chiral_states_list = []
+# for iterations in range(1000):
+#     S, E, M = construct_state()
+#     non_chiral_states, chiral_states = chirality_test()
+#     non_chiral_states_list += non_chiral_states
+#     chiral_states_list += chiral_states
+#
+# print(len(non_chiral_states_list), len(chiral_states_list))
+#
+# non_chiral_evaluation_on_logic_statement = [0, 0]
+# for non_chiral_state in non_chiral_states_list:
+#     mp, mq = uniform(1, 10), uniform(1, 10)
+#     flag = logic_statement_true_for_non_chiral(non_chiral_state[0], non_chiral_state[1])
+#     if flag:
+#         non_chiral_evaluation_on_logic_statement[0] += 1
+#     else:
+#         non_chiral_evaluation_on_logic_statement[1] += 1
+#
+# chiral_evaluation_on_logic_statement = [0, 0]
+# for chiral_state in chiral_states_list:
+#     mp, mq = uniform(1, 10), uniform(1, 10)
+#     flag = logic_statement_true_for_non_chiral(chiral_state[0], chiral_state[1])
+#     if flag:
+#         chiral_evaluation_on_logic_statement[0] += 1
+#     else:
+#         chiral_evaluation_on_logic_statement[1] += 1
+#
+# x = ['True', 'False']
+# height_non_chiral = [non_chiral_evaluation_on_logic_statement[0], non_chiral_evaluation_on_logic_statement[1]]
+# height_chiral = [chiral_evaluation_on_logic_statement[0], chiral_evaluation_on_logic_statement[1]]
+#
+# plt.bar(x, height_non_chiral, color = 'k', width = 0.1)
+# plt.title('Non-chiral states evaluated on the logic statement\nwhich is true iff the input is non-chiral')
+# plt.ylabel('Frequency')
+# #plt.show()
+# plt.savefig('non_chiral_non_collision_logic_statement_test.pdf', bbox_inches='tight')
+#
+# plt.bar(x, height_chiral, color = 'k', width = 0.1)
+# plt.title('Chiral states evaluated on the logic statement\nwhich is true iff the input is non-chiral')
+# plt.ylabel('Frequency')
+# plt.show()
+# plt.savefig('chiral_non_collision_logic_statement_test.pdf', bbox_inches='tight')
 
-print(len(non_chiral_states_list), len(chiral_states_list))
-
-non_chiral_evaluation_on_logic_statement = [0, 0]
-for non_chiral_state in non_chiral_states_list:
-    mp, mq = uniform(1, 10), uniform(1, 10)
-    flag = logic_statement_true_for_non_chiral(non_chiral_state[0], non_chiral_state[1])
-    if flag:
-        non_chiral_evaluation_on_logic_statement[0] += 1
-    else:
-        non_chiral_evaluation_on_logic_statement[1] += 1
-
-chiral_evaluation_on_logic_statement = [0, 0]
-for chiral_state in chiral_states_list:
-    mp, mq = uniform(1, 10), uniform(1, 10)
-    flag = logic_statement_true_for_non_chiral(chiral_state[0], chiral_state[1])
-    if flag:
-        chiral_evaluation_on_logic_statement[0] += 1
-    else:
-        chiral_evaluation_on_logic_statement[1] += 1
-
-x = ['True', 'False']
-height_non_chiral = [non_chiral_evaluation_on_logic_statement[0], non_chiral_evaluation_on_logic_statement[1]]
-height_chiral = [chiral_evaluation_on_logic_statement[0], chiral_evaluation_on_logic_statement[1]]
-
-plt.bar(x, height_non_chiral, color = 'k', width = 0.1)
-plt.title('Non-chiral states evaluated on the logic statement\nwhich is true iff the input is non-chiral')
-plt.ylabel('Frequency')
-#plt.show()
-plt.savefig('non_chiral_non_collision_logic_statement_test.pdf', bbox_inches='tight')
-
-plt.bar(x, height_chiral, color = 'k', width = 0.1)
-plt.title('Chiral states evaluated on the logic statement\nwhich is true iff the input is non-chiral')
-plt.ylabel('Frequency')
-#plt.show()
-#plt.savefig('chiral_non_collision_logic_statement_test.pdf', bbox_inches='tight')
-
-
-
+print(chirality_test())
 
 
 
