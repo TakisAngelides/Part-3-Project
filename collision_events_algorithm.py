@@ -137,7 +137,7 @@ def swap(S,idx_1,idx_2):
 
 def permute_with_idx(M, E, idx_to_permute):
 
-    same_mass_with_idx = [idx for idx in range(len(M)) if M[idx] == M[idx_to_permute] and idx != idx_to_permute]
+    same_mass_with_idx = [idx for idx in range(len(M)) if M[idx] == M[idx_to_permute] and idx != idx_to_permute and idx != 0 and idx != 1]
     same_energy_with_idx = [idx for idx in range(len(E)) if E[idx] == E[idx_to_permute] and idx != idx_to_permute]
 
     return list(set(same_mass_with_idx) and set(same_energy_with_idx))
